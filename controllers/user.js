@@ -172,10 +172,7 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     // send the token to user's provided email
-
-    const resetURL = `${req.protocol}://${req.get(
-      "host"
-    )}/api/users/resetpassword/${resetToken}`;
+    const resetURL = `https://cs-alert-client.web.app/resetpassword/${resetToken}`;
 
     const html = `<p>forgot your password? click this <a href=${resetURL} target="_blank">link</a>  to reset your password </p>`;
 
@@ -185,7 +182,7 @@ const forgotPassword = async (req, res) => {
       html,
     });
 
-    res.status(200).send("Password reset token sent to your email.");
+    res.status(200).send("Password Reset Token Sent To Your Email.");
   } catch (error) {
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
@@ -222,7 +219,7 @@ const resetPassword = async (req, res, next) => {
     user.passwordResetExpires = undefined;
     await user.save();
     // change password issue time in user models
-
+    // changed in model
     // log the user in, send JWT
     // allocating jsonwebtoken for the user
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
