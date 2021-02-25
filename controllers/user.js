@@ -3,6 +3,8 @@ const User = require("../models/user.js");
 const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 const Joi = require("joi");
+const sendEmail = require("../utils/sendEmail.js");
+const crypto = require("crypto");
 
 // register and login validation by Joi
 const registerValidation = Joi.object({
@@ -144,12 +146,102 @@ const protect = async (req, res, next) => {
 // restrict some access for admin
 
 const restrict = async (req, res, next) => {
-  if (req.user.role !== "admin") {
-    return res
-      .status(403)
-      .send("You don't have permission to perform this action");
+  try {
+    if (req.user.role !== "admin") {
+      return res
+        .status(403)
+        .send("You don't have permission to perform this action");
+    }
+    next();
+  } catch (error) {
+    res.status(401).send("Something Went Wrong, Please Login Again");
   }
-  next();
+};
+
+// creating forgot password controller
+const forgotPassword = async (req, res) => {
+  try {
+    // get user from POSTed Email
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      return res.status(404).send("no user found with this email");
+    }
+
+    // generate a random reset token
+    const resetToken = user.createPasswordResetToken();
+    await user.save();
+
+    // send the token to user's provided email
+
+    const resetURL = `${req.protocol}://${req.get(
+      "host"
+    )}/api/users/resetpassword/${resetToken}`;
+
+    const html = `<p>forgot your password? click this <a href=${resetURL} target="_blank">link</a>  to reset your password </p>`;
+
+    await sendEmail({
+      email: user.email,
+      subject: "Your Password Reset Token(Valid For 10 Minutes)",
+      html,
+    });
+
+    res.status(200).send("Password reset token sent to your email.");
+  } catch (error) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+    res
+      .status(500)
+      .send(
+        "Something Went Wrong. Can't send password reset token. try again."
+      );
+  }
+};
+
+// creating reset password controller
+const resetPassword = async (req, res, next) => {
+  try {
+    // get user based on param Token
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    // if token not expired, user still exist, set new password
+    if (!user) {
+      return res.status(400).send("Token is invalid or expired");
+    }
+
+    user.password = req.body.password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+    // change password issue time in user models
+
+    // log the user in, send JWT
+    // allocating jsonwebtoken for the user
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
+
+    // sending response to the client
+    res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(401).send("Something Went Wrong");
+  }
 };
 
 module.exports = {
@@ -157,4 +249,6 @@ module.exports = {
   login,
   protect,
   restrict,
+  forgotPassword,
+  resetPassword,
 };
