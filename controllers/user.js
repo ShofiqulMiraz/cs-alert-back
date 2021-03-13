@@ -172,7 +172,7 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     // send the token to user's provided email
-    const resetURL = `https://cs-alert-client.web.app/resetpassword/${resetToken}`;
+    const resetURL = `https://cs-alert-front.vercel.app/resetpassword/${resetToken}`;
 
     const html = `<p>forgot your password? click this <a href=${resetURL} target="_blank">link</a>  to reset your password </p>`;
 
