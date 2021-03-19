@@ -12,10 +12,9 @@ const sendEmail = async (options) => {
   });
   // define option
   const emailOptions = {
-    from: '"shofiqul islam miraz" <simiraz90@gmail.com>', // sender address
+    from: '"Shofiqul Islam Miraz" <simiraz90@pm.me>', // sender address
     to: options.email, // list of receivers
     subject: options.subject, // Subject line
-    // text: options.message, // plain text body
     html: options.html, // html body
   };
 
